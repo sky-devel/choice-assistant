@@ -1,6 +1,6 @@
 from transformers import AutoTokenizer
 from torch import cuda, bfloat16
-from time import time
+from langchain.prompts import PromptTemplate
 import transformers
 import torch
 
@@ -13,8 +13,6 @@ bnb_config = transformers.BitsAndBytesConfig(
     bnb_4bit_compute_dtype=bfloat16
 )
 
-
-time_1 = time()
 model_config = transformers.AutoConfig.from_pretrained(
     model_id,
 )
@@ -28,7 +26,6 @@ model = transformers.AutoModelForCausalLM.from_pretrained(
     device_map='auto',
 )
 
-
 query_pipeline = transformers.pipeline(
     task="text-generation",
     model=model,
@@ -37,14 +34,21 @@ query_pipeline = transformers.pipeline(
     device_map="auto",
 )
 
+template = PromptTemplate(
+    template="""
+        Answer the question in two sentences: {question}
+     """,
+    input_variables=["question"],
+)
 
 while True:
-    question = input("Enter a question: ")
+    question = input("Enter your question: ")
     answer = query_pipeline(
-        question,
+        template.format(question=question),
         do_sample=True,
         top_k=5,
         num_return_sequences=1,
         eos_token_id=tokenizer.eos_token_id,
-        max_length=112,)
-    print(answer, "\n")
+        max_length=512,
+    )
+    print(answer[0]["generated_text"], "\n")
